@@ -1,0 +1,54 @@
+.barra-azul {
+    height: 2px;
+    background-color: #007bff;
+    margin-top: -1px;
+}
+.mensaje {
+    background-color: #dff0d8; /* Verde claro */
+    color: #3c763d; /* Verde oscuro */
+    border: 1px solid #d6e9c6;
+    padding: 15px;
+    margin: 15px;
+    border-radius: 5px;
+    position: relative;
+}
+
+.mensaje .cerrar {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: #3c763d;
+    cursor: pointer;
+    font-weight: bold;
+}
+/* Estilos personalizados */
+.card {
+    margin-bottom: 20px;
+}
+
+.barra-azul {
+    height: 3px;
+    background-color: #0d6efd;
+    margin-bottom: 20px;
+}
+
+
+.table {
+    margin-top: 20px;
+}
+
+.table img {
+    border-radius: 5px;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+}

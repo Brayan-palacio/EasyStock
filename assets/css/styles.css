@@ -1,0 +1,102 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f1f2f7;
+}
+.sidebar-title {
+    background-color: #ff5722; /* Color llamativo */
+    color: #ffffff; /* Texto en blanco */
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 5px;
+}
+.sidebar-title-header {
+    color: #ff5722; /* Mismo color que en la barra lateral */
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin: 0;
+}
+.sidebar {
+    width: 250px;
+    height: 100vh;
+    position: fixed;
+}
+
+.sidebar ul ul {
+    background-color: #495057;
+    margin-left: 15px;
+    border-left: 2px solid #6c757d;
+}
+
+.sidebar ul ul .nav-link {
+    padding-left: 20px;
+}
+
+
+.main-content {
+    margin-left: 250px;
+}
+
+.nav-link {
+    padding: 10px 15px;
+    display: block;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.nav-link:hover {
+    background-color: #495057;
+    text-decoration: none;
+}
+
+.nav-link.active {
+    border-radius: 5px;
+    background-color: #495057;
+    color: white !important;
+}
+
+.header {
+    padding: 15px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+}
+.logo {
+    color: #fff;
+    text-align: center;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: inline-block;
+    width: 250px;
+    background-color: #16a085;
+}
+.collapse {
+    transition: height 0.3s ease;
+}
+.logout-btn {
+    transition: all 0.3s ease-in-out;
+}
+
+.logout-btn:hover {
+    background-color: #c82333;
+    transform: scale(1.05);
+}
+.shadow-sm {
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+    }
+}
+input[type="search"]:focus,
+input[type="text"]:focus,
+textarea:focus {
+    outline: none;
+    box-shadow: none; /* Elimina el borde de Bootstrap */
+    border: 1px solid #ccc; /* Opcional: define un borde estándar */
+}
+.card-header{
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+}
