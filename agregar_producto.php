@@ -17,6 +17,15 @@ if (!isset($_SESSION['id_usuario'])) {
     exit();
 }
 
+// Función para registrar movimientos en el Kardex
+function registrarMovimientoKardex($conexion, $producto_id, $tipo, $cantidad, $motivo, $usuario_id) {
+    $sql = "INSERT INTO movimientos (producto_id, tipo, cantidad, motivo, usuario_id, fecha) 
+            VALUES (?, ?, ?, ?, ?, NOW())";
+    $stmt = $conexion->prepare($sql);
+    $stmt->bind_param("isisi", $producto_id, $tipo, $cantidad, $motivo, $usuario_id);
+    return $stmt->execute();
+}
+
 // Obtener categorías con manejo de errores mejorado
 try {
     $sql_categorias = "SELECT id, nombre FROM categorias ORDER BY nombre";
@@ -124,20 +133,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $datos['imagen']
         );
 
-        if (!$respuesta) {
+        if ($respuesta) {
+            // Registrar movimiento en el Kardex
+            $movimientoExitoso = registrarMovimientoKardex(
+                $conexion,
+                $conexion->insert_id, // ID del nuevo producto
+                'entrada',
+                $datos['cantidad'],
+                'Registro inicial de inventario',
+                $_SESSION['id_usuario']
+            );
+            
+            if (!$movimientoExitoso) {
+                // Eliminar producto si falla el registro del movimiento
+                $conexion->query("DELETE FROM productos WHERE id = {$conexion->insert_id}");
+                if ($datos['imagen'] !== null && file_exists($directorio . $datos['imagen'])) {
+                    unlink($directorio . $datos['imagen']);
+                }
+                throw new Exception("Error al registrar el movimiento en el Kardex");
+            }
+
+            $_SESSION['mensaje'] = [
+                'tipo' => 'success',
+                'texto' => 'Producto agregado y Kardex actualizado exitosamente'
+            ];
+            header("Location: productos.php");
+            exit();
+        } else {
             // Eliminar imagen si falla la inserción
             if ($datos['imagen'] !== null && file_exists($directorio . $datos['imagen'])) {
                 unlink($directorio . $datos['imagen']);
             }
             throw new Exception("Error al agregar el producto en la base de datos");
         }
-
-        $_SESSION['mensaje'] = [
-            'tipo' => 'success',
-            'texto' => 'Producto agregado exitosamente'
-        ];
-        header("Location: productos.php");
-        exit();
 
     } catch (Exception $e) {
         $error = $e->getMessage();
@@ -198,7 +226,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 </style>
 
-<div class="container py-4">
+<div class="container-fluid py-4">
+    <?php include 'productos_navbar.php'; ?>
     <div class="row justify-content-center">
         <div class="col-lg-10">
             <div class="card card-form">

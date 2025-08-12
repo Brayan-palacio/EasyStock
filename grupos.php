@@ -38,6 +38,7 @@ $totalPaginas = ceil($totalRegistros / $registrosPorPagina);
 ?>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <div class="container-fluid py-4">
+    <?php include 'accesos_navbar.php'; ?>
     <div class="card shadow-lg border-0 rounded-3">
         <div class="card-header bg-dark text-white py-3">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">

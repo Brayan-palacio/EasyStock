@@ -2,19 +2,80 @@
 session_start();
 require 'config/conexion.php';
 require 'config/config.php';
+
 // Configuración de seguridad de headers
 header("X-Frame-Options: DENY");
 header("X-Content-Type-Options: nosniff");
 header("X-XSS-Protection: 1; mode=block");
+
+// Generar token CSRF si no existe
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Procesar el formulario si se envió
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validar token CSRF
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        $_SESSION['error'] = "Token de seguridad inválido. Por favor, intente nuevamente.";
+        header('Location: recuperar-contraseña.php');
+        exit;
+    }
+
+    // Validar y sanitizar el email
+    $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['error'] = "Por favor ingrese un correo electrónico válido.";
+        header('Location: recuperar-contraseña.php');
+        exit;
+    }
+
+    // Verificar si el email existe en la base de datos (usando consultas preparadas)
+    try {
+        $stmt = $pdo->prepare("SELECT id, nombre FROM usuarios WHERE email = ? LIMIT 1");
+        $stmt->execute([$email]);
+        $usuario = $stmt->fetch();
+
+        if ($usuario) {
+            // Generar token único para recuperación
+            $token = bin2hex(random_bytes(50));
+            $expiracion = date("Y-m-d H:i:s", strtotime('+1 hour'));
+
+            // Guardar token en la base de datos
+            $stmt = $pdo->prepare("UPDATE usuarios SET token_recuperacion = ?, token_expiracion = ? WHERE id = ?");
+            $stmt->execute([$token, $expiracion, $usuario['id']]);
+
+            // Enviar email con el enlace de recuperación
+            $enlace = "https://" . $_SERVER['HTTP_HOST'] . "/restablecer-contraseña.php?token=$token";
+            
+            // Aquí iría el código para enviar el email (usar PHPMailer o similar)
+            // mail($email, "Recuperación de contraseña", "Hola {$usuario['nombre']},\n\nPara restablecer tu contraseña, haz clic en el siguiente enlace:\n\n$enlace\n\nEl enlace expirará en 1 hora.");
+            
+            $_SESSION['exito'] = "Se ha enviado un enlace de recuperación a tu correo electrónico. Por favor revisa tu bandeja de entrada (y la carpeta de spam).";
+            header('Location: recuperar-contraseña.php');
+            exit;
+        } else {
+            // No revelar si el email existe o no (seguridad)
+            $_SESSION['exito'] = "Si el correo existe en nuestro sistema, recibirás un enlace de recuperación.";
+            header('Location: recuperar-contraseña.php');
+            exit;
+        }
+    } catch (PDOException $e) {
+        error_log("Error en recuperación de contraseña: " . $e->getMessage());
+        $_SESSION['error'] = "Ocurrió un error al procesar tu solicitud. Por favor intenta más tarde.";
+        header('Location: recuperar-contraseña.php');
+        exit;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sistema de gestión integral para EasyStock">
+    <meta name="description" content="Recuperación de contraseña para EasyStock">
     <meta name="author" content="EasyStock">
-    <title>Acceso al Sistema - <?= htmlspecialchars($nombreSistema) ?></title>
+    <title>Recuperar Contraseña - <?= htmlspecialchars($nombreSistema) ?></title>
     
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
@@ -22,7 +83,7 @@ header("X-XSS-Protection: 1; mode=block");
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
-    <!-- Google Fonts - Poppins (más profesional) -->
+    <!-- Google Fonts - Poppins -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Favicon -->
@@ -124,23 +185,7 @@ header("X-XSS-Protection: 1; mode=block");
             box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
         }
         
-        .input-group-text {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-right: none;
-            color: var(--primary);
-            padding: 0.75rem 1rem;
-        }
-        
-        .input-group .form-control {
-            border-left: none;
-        }
-        
-        .input-group .form-control:focus {
-            border-left: none;
-        }
-        
-        .btn-login {
+        .btn-primary {
             border-radius: 8px;
             background-color: var(--primary);
             border: none;
@@ -154,28 +199,14 @@ header("X-XSS-Protection: 1; mode=block");
             text-transform: uppercase;
         }
         
-        .btn-login:hover {
+        .btn-primary:hover {
             background-color: var(--primary-light);
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(26, 58, 47, 0.2);
         }
         
-        .btn-login:active {
+        .btn-primary:active {
             transform: translateY(0);
-        }
-        
-        .forgot-link {
-            color: var(--gray-text);
-            font-size: 0.9rem;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 1rem;
-            transition: color 0.2s ease;
-        }
-        
-        .forgot-link:hover {
-            color: var(--primary);
-            text-decoration: underline;
         }
         
         .footer-text {
@@ -185,33 +216,11 @@ header("X-XSS-Protection: 1; mode=block");
             line-height: 1.5;
         }
         
-        .divider {
-            display: flex;
-            align-items: center;
-            margin: 1.5rem 0;
-            color: var(--gray-text);
-            font-size: 0.85rem;
-        }
-        
-        .divider::before, .divider::after {
-            content: "";
-            flex: 1;
-            border-bottom: 1px solid #e2e8f0;
-            margin: 0 10px;
-        }
-        
         /* Alertas mejoradas */
         .alert {
             border-radius: 8px;
             padding: 0.75rem 1rem;
             font-size: 0.9rem;
-        }
-        
-        /* Efecto de carga */
-        .btn-loading .spinner-border {
-            width: 1rem;
-            height: 1rem;
-            border-width: 0.15em;
         }
         
         /* Responsive */
@@ -231,7 +240,8 @@ header("X-XSS-Protection: 1; mode=block");
         <div class="login-box">
             <img src="img/logo_easystock.png" alt="EasyStock" class="brand-logo">
             
-            <p class="login-subtitle">Sistema de Gestión de Inventarios</p>
+            <h1 class="login-title">Recuperar Contraseña</h1>
+            <p class="login-subtitle">Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.</p>
             
             <?php if(isset($_SESSION['error'])): ?>
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -242,30 +252,34 @@ header("X-XSS-Protection: 1; mode=block");
                 <?php unset($_SESSION['error']); ?>
             <?php endif; ?>
             
-            <form id="loginForm" action="controllers/procesar_login.php" method="POST" autocomplete="off" novalidate>
-                <div class="mb-3">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
-                        <input type="text" name="usuario" class="form-control" placeholder="Usuario" required autofocus>
-                    </div>
+            <?php if(isset($_SESSION['exito'])): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <?= htmlspecialchars($_SESSION['exito'], ENT_QUOTES, 'UTF-8') ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
+                <?php unset($_SESSION['exito']); ?>
+            <?php endif; ?>
+            
+            <form id="recoveryForm" action="recuperar-contraseña.php" method="POST" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                 
                 <div class="mb-3">
                     <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                        <input type="password" name="contraseña" class="form-control" placeholder="Contraseña" required>
+                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                        <input type="email" name="email" class="form-control" placeholder="Correo electrónico" required autofocus>
                     </div>
                 </div>
                 
                 <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-login" id="loginButton">
-                        <i class="fas fa-sign-in-alt me-2"></i> INGRESAR
+                    <button type="submit" class="btn btn-primary" id="recoveryButton">
+                        <i class="fas fa-paper-plane me-2"></i> ENVIAR ENLACE
                     </button>
                 </div>
                 
                 <div class="text-center mt-3">
-                    <a href="recuperar-contraseña.php" class="forgot-link">
-                        <i class="fas fa-key me-1"></i> ¿Olvidaste tu contraseña?
+                    <a href="index.php" class="text-decoration-none">
+                        <i class="fas fa-arrow-left me-1"></i> Volver al inicio de sesión
                     </a>
                 </div>
                 
@@ -283,28 +297,22 @@ header("X-XSS-Protection: 1; mode=block");
     <!-- Validación del formulario -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const loginForm = document.getElementById('loginForm');
-            const loginButton = document.getElementById('loginButton');
+            const recoveryForm = document.getElementById('recoveryForm');
+            const recoveryButton = document.getElementById('recoveryButton');
             
-            loginForm.addEventListener('submit', function(e) {
+            recoveryForm.addEventListener('submit', function(e) {
                 // Validación simple del cliente
-                const usuario = document.querySelector('input[name="usuario"]');
-                const contraseña = document.querySelector('input[name="contraseña"]');
+                const email = document.querySelector('input[name="email"]');
                 
-                if (!usuario.value.trim() || !contraseña.value.trim()) {
+                if (!email.value.trim()) {
                     e.preventDefault();
-                    if (!usuario.value.trim()) {
-                        usuario.focus();
-                    } else {
-                        contraseña.focus();
-                    }
+                    email.focus();
                     return false;
                 }
                 
                 // Mostrar estado de carga
-                loginButton.disabled = true;
-                loginButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Ingresando...';
-                loginButton.classList.add('btn-loading');
+                recoveryButton.disabled = true;
+                recoveryButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Enviando...';
             });
             
             // Limpiar errores al empezar a escribir

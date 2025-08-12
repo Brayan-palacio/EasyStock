@@ -30,7 +30,8 @@ $resultado_productos = $stmt->get_result();
 include 'includes/header.php';
 ?>
 
-<div class="container mt-4">
+<div class="container-fluid py-4">
+    <?php include 'ventas_navbar.php'; ?>
     
     <div class="card p-4 shadow-sm" style="border-top: 4px solid #d4af37;">
         <h2 class="mb-4 text-center" style="color: #1a3a2f;">Cotizaciones</h2>

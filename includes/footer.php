@@ -10,6 +10,18 @@
 
         <script>
             document.addEventListener('DOMContentLoaded', function() {
+                const currentPage = window.location.pathname.split('/').pop();
+    const navButtons = document.querySelectorAll('.d-flex.flex-wrap a.btn');
+    
+    navButtons.forEach(button => {
+        const buttonPage = button.getAttribute('href').split('/').pop();
+        if (buttonPage === currentPage) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+    });
+    
     const submenus = document.querySelectorAll('.nav-item > a[data-bs-toggle="collapse"]');
     submenus.forEach(submenu => {
         submenu.addEventListener('click', function() {

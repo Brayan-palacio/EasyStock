@@ -29,4 +29,22 @@ function obtenerDatosEmpresa($conexion) {
     return $datos;
 }
 
+function registrarBitacora($usuarioId, $accion, $detalles) {
+    global $conexion;
+    
+    $stmt = $conexion->prepare("INSERT INTO bitacora (
+        usuario_id, 
+        accion, 
+        detalles, 
+        fecha
+    ) VALUES (?, ?, ?, NOW())");
+    
+    $stmt->bind_param("iss", $usuarioId, $accion, $detalles);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function sanitizarInput($data) {
+    return htmlspecialchars(strip_tags(trim($data)));
+}
 ?>

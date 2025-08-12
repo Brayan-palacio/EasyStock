@@ -1,4 +1,5 @@
 <?php
+$tituloPagina = 'Agregar clientes - EasyStock';
 // Configuración de seguridad
 header("X-Frame-Options: DENY");
 header("X-Content-Type-Options: nosniff");

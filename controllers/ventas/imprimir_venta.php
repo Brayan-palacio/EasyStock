@@ -55,6 +55,9 @@ $stmt->close();
 // Calcular saldo pendiente
 $total_pagado = array_sum(array_column($pagos, 'monto'));
 $saldo_pendiente = $venta['total'] - $total_pagado;
+$logoData = $conexion->query("SELECT valor FROM configuracion WHERE clave = 'logo' LIMIT 1")->fetch_assoc();
+$nombreLogo = $logoData['valor'] ?? '';
+$rutaBase = '/EasyStock/'; // Ajusta según tu instalación
 ?>
 
 <!DOCTYPE html>
@@ -248,23 +251,59 @@ $saldo_pendiente = $venta['total'] - $total_pagado;
 <body>
     <div class="container">
         <!-- Encabezado -->
-        <div class="header">
-            <div>
-                <img src="<?= isset($_SESSION['logo_empresa']) ? $_SESSION['logo_empresa'] : '../../img/EASYSTOCK.png' ?>" 
-                     alt="EasyStock" class="logo">
-                <h2><?= htmlspecialchars($empresa['empresa_nombre']) ?></h2>
-                <p>
-                    <?= nl2br(htmlspecialchars($empresa['empresa_direccion'])) ?? 'Dirección no especificada' ?><br>
-                    <strong>Tel:</strong> <?= htmlspecialchars($empresa['empresa_telefono']) ?? 'N/A' ?> | 
-                    <strong>RUC:</strong> <?= htmlspecialchars($empresa['empresa_ruc']) ?? 'N/A' ?>
-                </p>
-            </div>
-            <div>
-                <h1 class="titulo-comprobante">COMPROBANTE DE VENTA</h1>
-                <p><strong>N°:</strong> <?= str_pad($venta_id, 8, '0', STR_PAD_LEFT) ?></p>
-                <p><strong>Fecha:</strong> <?= date('d/m/Y H:i', strtotime($venta['fecha_venta'])) ?></p>
-            </div>
+        <!-- Encabezado con logos y nombres -->
+<div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <!-- Bloque izquierdo (Taller) -->
+    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+    <?php if ($nombreLogo && file_exists($_SERVER['DOCUMENT_ROOT'] . $rutaBase . 'assets/img/' . $nombreLogo)): ?>
+        <img src="<?= $rutaBase ?>assets/img/<?= htmlspecialchars($nombreLogo) ?>" 
+             alt="Logo <?= htmlspecialchars($empresa['empresa_nombre'] ?? 'Empresa') ?>"
+             style="max-height: 80px; max-width: 200px; object-fit: contain;">
+    <?php else: ?>
+        <!-- Espacio reservado profesional -->
+        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+                  display: flex; align-items: center; justify-content: center;
+                  border-radius: 4px; border: 1px solid #ddd;
+                  font-weight: bold; color: #555; font-size: 1.2em;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <?= !empty($empresa['empresa_nombre']) ? 
+                strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $empresa['empresa_nombre']), 0, 2)) : 
+                'LO' ?>
         </div>
+    <?php endif; ?>
+    
+    <!-- 3. Información de la empresa -->
+    <div>
+        <h2 style="margin: 0 0 5px 0; font-size: 1.3em; color: #2c3e50;">
+            <?= htmlspecialchars($empresa['empresa_nombre'] ?? 'Nombre de Empresa') ?>
+        </h2>
+        <p style="margin: 0; color: #666; font-size: 0.9em; line-height: 1.4;">
+            <?= nl2br(htmlspecialchars($empresa['empresa_direccion'] ?? 'Dirección no especificada')) ?>
+            <br>
+            <strong>Tel:</strong> <?= htmlspecialchars($empresa['empresa_telefono'] ?? 'N/A') ?>
+            <?php if (!empty($empresa['empresa_ruc'])): ?>
+                | <strong>RUC:</strong> <?= htmlspecialchars($empresa['empresa_ruc']) ?>
+            <?php endif; ?>
+        </p>
+    </div>
+</div>
+    
+    <!-- Título central -->
+    <div style="text-align: center; flex-grow: 1;">
+        <h1 class="titulo-comprobante" style="margin: 0; font-size: 1.5em;">COMPROBANTE DE VENTA</h1>
+        <p style="margin: 5px 0;"><strong>N°:</strong> <?= str_pad($venta_id, 8, '0', STR_PAD_LEFT) ?></p>
+        <p style="margin: 0;"><strong>Fecha:</strong> <?= date('d/m/Y H:i', strtotime($venta['fecha_venta'])) ?></p>
+    </div>
+    
+    <!-- Bloque derecho (EasyStock) -->
+    <div style="display: flex; align-items: center; gap: 10px; min-width: 30%; justify-content: flex-end;">
+        <div style="text-align: right;">
+            <p style="margin: 0; font-weight: bold; font-size: 1.1em;">EasyStock</p>
+            <p style="margin: 0; font-size: 0.8em; color: #666;">Sistema de Inventario</p>
+        </div>
+        <img src="../../img/logo_easystock.png" alt="EasyStock" class="logo" style="max-height: 90px;">
+    </div>
+</div>
         
         <!-- Información del cliente y venta -->
         <div class="info-venta">
@@ -400,13 +439,14 @@ $saldo_pendiente = $venta['total'] - $total_pagado;
         </div>
         
         <!-- Pie de página -->
-        <div class="footer">
-            <p>EasyStock &copy; <?= date('Y') ?> | Tel: <?= htmlspecialchars($empresa['empresa_telefono']) ?? 'N/A' ?> | Email: <?= htmlspecialchars($empresa['empresa_email']) ?? 'N/A' ?></p>
-            <p>¡Gracias por su preferencia!</p>
-            <?php if ($saldo_pendiente <= 0): ?>
-                <div class="sello-aprobado no-print">PAGADO</div>
-            <?php endif; ?>
-        </div>
+        <div class="footer" style="margin-top: 30px; text-align: center; font-size: 0.8em; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
+    <p style="margin: 5px 0;">
+        <strong><?= htmlspecialchars($empresa['empresa_nombre'] ?? 'N/A') ?></strong> | 
+        RUC: <?= htmlspecialchars($empresa['empresa_ruc'] ?? 'N/A') ?> | 
+        Tel: <?= htmlspecialchars($empresa['empresa_telefono'] ?? 'N/A') ?>
+    </p>
+    <p style="margin: 5px 0;">Documento generado por <strong>EasyStock &copy; <?= date('Y') ?></strong> - <?= date('d/m/Y H:i:s') ?></p>
+</div>
     </div>
     
     <!-- Botón de impresión (solo visible en pantalla) -->

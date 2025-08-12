@@ -16,87 +16,6 @@ $totalProductos = obtenerTotalProductos($conexion);
 $totalPaginas = ceil($totalProductos / $porPagina);
 ?>
 
-<?php
-// Obtener configuración
-$umbralBajo = obtenerConfiguracion($conexion, 'inventario_minimo');
-
-// Obtener TODOS los productos con stock bajo (sin paginación)
-$todosBajoStock = obtenerTodosProductosBajoStock($conexion, $umbralBajo);
-
-// Mostrar alerta solo en primera página si hay productos bajo stock
-if (!empty($todosBajoStock) && $pagina == 1): ?>
-<div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
-    <div class="d-flex align-items-center">
-        <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
-        <div>
-            <h5 class="alert-heading mb-1">¡Alerta Global de Stock Bajo!</h5>
-            <p class="mb-2">
-                <span class="badge bg-danger rounded-pill"><?= count($todosBajoStock) ?></span>
-                productos están por debajo del nivel mínimo (<?= $umbralBajo ?> unidades)
-            </p>
-            
-            <div class="table-responsive mt-3">
-                <table class="table table-sm table-hover table-bordered">
-                    <thead class="table-light">
-                        <tr>
-                            <th width="50">#</th>
-                            <th>Producto</th>
-                            <th>Categoría</th>
-                            <th width="100">Stock</th>
-                            <th width="120">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach($todosBajoStock as $index => $producto): ?>
-                        <tr class="align-middle">
-                            <td><?= $index + 1 ?></td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <?php if (!empty($producto['imagen'])): ?>
-                                    <img src='assets/img/productos/<?= htmlspecialchars($producto['imagen']) ?>' 
-                                         class="rounded-circle me-2" width="36" height="36">
-                                    <?php else: ?>
-                                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-2" 
-                                         style="width:36px;height:36px;">
-                                        <i class="fas fa-box text-muted"></i>
-                                    </div>
-                                    <?php endif; ?>
-                                    <?= htmlspecialchars($producto['descripcion']) ?>
-                                </div>
-                            </td>
-                            <td><?= htmlspecialchars($producto['categoria']) ?></td>
-                            <td class="text-center">
-                                <span class="badge bg-danger bg-opacity-10 text-danger">
-                                    <?= $producto['cantidad'] ?>
-                                </span>
-                            </td>
-                            <td class="text-center">
-                                <a href="editar_producto.php?id=<?= $producto['id'] ?>" 
-                                   class="btn btn-sm btn-outline-primary"
-                                   title="Reabastecer">
-                                    <i class="fas fa-arrow-up"></i>
-                                </a>
-                                <a href="kardex.php?id=<?= $producto['id'] ?>" 
-                                   class="btn btn-sm btn-outline-info"
-                                   title="Ver historial">
-                                    <i class="fas fa-history"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="mt-2 small text-muted">
-                <i class="fas fa-info-circle me-1"></i>
-                Estos productos necesitan atención inmediata
-            </div>
-        </div>
-    </div>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-<?php endif; ?>
 <style>
     .rounded-circle {
     transition: all 0.3s ease;
@@ -106,8 +25,8 @@ if (!empty($todosBajoStock) && $pagina == 1): ?>
     box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
 }
 </style>
-
-<div class="container-fluid px-4">
+<div class="container-fluid py-4">
+    <?php include 'productos_navbar.php'; ?>
     <?php if (!empty($_GET['mensaje']) && !empty($_GET['texto'])): ?>
         <div class="alert alert-<?= htmlspecialchars($_GET['mensaje']) ?> alert-dismissible fade show mt-3" role="alert">
             <i class="fas <?= $_GET['mensaje'] === 'success' ? 'fa-check-circle' : 'fa-info-circle' ?> me-2"></i>
@@ -128,9 +47,6 @@ if (!empty($todosBajoStock) && $pagina == 1): ?>
                         <i class="fas fa-plus-circle me-1"></i> Nuevo Producto
                     </a>
                         <?php endif; ?>
-                    <a href="productos_inactivos.php" class="btn btn-sm btn-outline-light">
-                        <i class="fas fa-trash-alt me-1"></i> Ver Inactivos
-                    </a>
                     <button class="btn btn-primary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#exportModal">
                         <i class="fas fa-file-export me-1"></i> Exportar
                     </button>
@@ -551,31 +467,6 @@ $('#exportModal').on('show.bs.modal', function() {
         }).format(valor);
     };
 
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Obtener el umbral de bajo stock (podrías pasarlo desde PHP o hacer una petición AJAX)
-    const umbralBajo = <?= $umbralBajo ?>; 
-    
-    // Contar productos bajo stock
-    let lowStockCount = 0;
-    document.querySelectorAll('td:nth-child(5)').forEach(cell => {
-        const stock = parseInt(cell.textContent);
-        if(stock <= umbralBajo) lowStockCount++;
-    });
-    
-    if(lowStockCount > 0) {
-        Swal.fire({
-            title: '¡Stock Bajo!',
-            html: `<p>Tienes <b>${lowStockCount}</b> producto(s) con stock crítico.</p>
-                  <small class="text-muted"><i class="fas fa-info-circle me-1"></i> Revisa la lista de productos marcados en rojo.</small>`,
-            icon: 'warning',
-            confirmButtonText: 'Entendido',
-            backdrop: true,
-            allowOutsideClick: false
-        });
-    }
-});
 </script>
 
 <?php include_once 'includes/footer.php'; ?>

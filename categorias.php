@@ -190,7 +190,8 @@ include_once 'includes/header.php';
     </style>
 </head>
 <body>
-    <div class="container py-4">
+<div class="container-fluid py-4">
+    <?php include 'productos_navbar.php'; ?>
         <!-- Mensajes de alerta -->
         <?php if (isset($_SESSION['mensaje'])): ?>
     <script>

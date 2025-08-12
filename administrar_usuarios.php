@@ -46,6 +46,7 @@ $grupos = $conexion->query("SELECT id, nombre FROM grupo WHERE estado = 'Activo'
 ?>
 
 <div class="container-fluid py-4">
+    <?php include 'accesos_navbar.php'; ?>
     <div class="card shadow-lg border-0 rounded-3">
         <div class="card-header bg-dark text-white py-3">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">

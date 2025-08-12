@@ -105,8 +105,74 @@ $totalPaginas = ceil($totalVentas / $registrosPorPagina);
 $stmtData->execute();
 $resultado = $stmtData->get_result();
 ?>
+<style>
+    /* Estilos para la barra de botones */
+.btn-outline-primary.active,
+.btn-outline-success.active,
+.btn-outline-secondary.active {
+    color: #fff !important;
+    border-color: transparent !important;
+}
 
+.btn-outline-primary.active {
+    background-color: var(--primary) !important;
+}
+
+.btn-outline-success.active {
+    background-color: var(--success) !important;
+}
+
+.btn-outline-secondary.active {
+    background-color: var(--secondary) !important;
+}
+
+/* Efectos hover para los botones */
+.btn-outline-primary:not(.active):hover {
+    color: var(--primary);
+    background-color: rgba(26, 58, 47, 0.1);
+}
+
+.btn-outline-success:not(.active):hover {
+    color: var(--success);
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.btn-outline-secondary:not(.active):hover {
+    color: var(--secondary);
+    background-color: rgba(108, 117, 125, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .d-flex.border-bottom {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 1rem;
+    }
+    
+    .d-flex.border-bottom > div {
+        width: 100%;
+    }
+    
+    .d-flex.flex-wrap {
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 1rem;
+    }
+    
+    .btn.rounded-pill {
+        flex: 1;
+        text-align: center;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+}   
+</style>
 <div class="container-fluid py-4">
+    <?php include 'ventas_navbar.php'; ?>
+    
+    <div class="d-flex">
+    
+</div>
     <div class="card shadow-lg border-0 rounded-3">
         <div class="card-header bg-dark text-white py-3">
             <div class="d-flex justify-content-between align-items-center">

@@ -196,6 +196,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
 
+                        <!-- Logo de la Empresa -->
+<div class="col-12">
+    <div class="mb-3">
+        <label for="logo" class="form-label">Logo de la Empresa</label>
+        <input type="file" class="form-control" id="logo" name="logo" accept=".png,.jpg,.jpeg,.svg">
+        <div class="form-text">Formatos permitidos: PNG, JPG, JPEG, SVG (Tamaño recomendado: 300x100px)</div>
+        
+        <!-- Mostrar logo actual si existe -->
+        <?php if (!empty($config['logo'])): ?>
+            <div class="mt-3">
+                <img src="assets/img/<?= htmlspecialchars($config['logo']) ?>" alt="Logo Actual" style="max-height: 80px; border: 1px solid #ddd; padding: 5px;">
+                <p class="text-muted mt-1">Logo actual</p>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
                         
 
                         <!-- Sección: Facturación (con IVA) -->

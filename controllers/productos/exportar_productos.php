@@ -1,33 +1,38 @@
 <?php
-// Iniciar buffer de salida para evitar errores con TCPDF
+// ==============================================
+// CONFIGURACIÓN INICIAL Y SEGURIDAD
+// ==============================================
 ob_start();
-
 require_once '../../config/conexion.php';
 require_once '../../includes/functions.php';
 
-// Verificar autenticación y permisos
+// Verificación de autenticación
 session_start();
 if (!isset($_SESSION['id_usuario'])) {
-    die('Acceso no autorizado');
+    die('🔒 Acceso no autorizado');
 }
 
-// Obtener y sanitizar parámetros
+// ==============================================
+// CAPTURA Y VALIDACIÓN DE PARÁMETROS
+// ==============================================
 $formato = isset($_GET['formato']) ? strtolower(trim($_GET['formato'])) : 'excel';
 $fechaInicio = isset($_GET['fecha_inicio']) ? $_GET['fecha_inicio'] : null;
 $fechaFin = isset($_GET['fecha_fin']) ? $_GET['fecha_fin'] : null;
 
-// Validar formato
+// Validación de formato
 $formatosPermitidos = ['excel', 'csv', 'pdf'];
 if (!in_array($formato, $formatosPermitidos)) {
-    die("Formato no soportado. Use: " . implode(', ', $formatosPermitidos));
+    die("❌ Formato no soportado. Formatos válidos: " . implode(', ', $formatosPermitidos));
 }
 
-// Validar fechas
+// Validación de fechas
 if (($fechaInicio && !$fechaFin) || (!$fechaInicio && $fechaFin)) {
-    die("Debes especificar ambas fechas o ninguna");
+    die("⚠️ Debes especificar ambas fechas o ninguna");
 }
 
-// Consulta SQL preparada para seguridad
+// ==============================================
+// CONSULTA A LA BASE DE DATOS
+// ==============================================
 $sql = "SELECT p.*, c.nombre as categoria FROM productos p 
         LEFT JOIN categorias c ON p.categoria_id = c.id 
         WHERE p.activo = 1";
@@ -53,10 +58,12 @@ $resultado = $stmt->get_result();
 $productos = $resultado->fetch_all(MYSQLI_ASSOC);
 
 if (empty($productos)) {
-    die("No hay productos para exportar con los criterios seleccionados");
+    die("📭 No hay productos para exportar con los criterios seleccionados");
 }
 
-// Generar el archivo según el formato
+// ==============================================
+// GENERACIÓN DEL ARCHIVO SEGÚN FORMATO
+// ==============================================
 switch ($formato) {
     case 'excel':
         exportarExcel($productos);
@@ -69,6 +76,9 @@ switch ($formato) {
         break;
 }
 
+// ==============================================
+// FUNCIÓN PARA EXPORTAR A EXCEL (XLSX)
+// ==============================================
 function exportarExcel($datos) {
     require_once '../../vendor/autoload.php';
     
@@ -76,35 +86,113 @@ function exportarExcel($datos) {
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         
-        // Estilos para encabezados
-        $sheet->getStyle('A1:H1')->applyFromArray([
-            'font' => ['bold' => true],
-            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
-            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['argb' => 'FFD9D9D9']]
+        // ------------------------------
+        // ESTILOS DEL DOCUMENTO
+        // ------------------------------
+        $headerStyle = [
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+                'size' => 11
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'wrapText' => true
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '1A3A2F'] // Verde oscuro corporativo
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['rgb' => 'FFFFFF']
+                ]
+            ]
+        ];
+        
+        $bodyStyle = [
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['rgb' => 'DDDDDD']
+                ]
+            ],
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER
+            ]
+        ];
+        
+        $numberStyle = [
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT
+            ]
+        ];
+        
+        // ------------------------------
+        // CONFIGURACIÓN DE HOJA
+        // ------------------------------
+        // Título del reporte
+        $sheet->mergeCells('A1:G1');
+        $sheet->setCellValue('A1', 'REPORTE DE PRODUCTOS - EASYSTOCK');
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 14,
+                'color' => ['rgb' => '1A3A2F']
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER
+            ]
         ]);
         
-        // Autoajustar columnas
-        $sheet->getColumnDimension('A')->setWidth(8);
-        $sheet->getColumnDimension('B')->setWidth(20);
-        $sheet->getColumnDimension('C')->setWidth(40);
-        $sheet->getColumnDimension('D')->setWidth(20);
-        $sheet->getColumnDimension('E')->setWidth(10);
-        $sheet->getColumnDimension('F')->setWidth(15);
-        $sheet->getColumnDimension('G')->setWidth(15);
-        $sheet->getColumnDimension('H')->setWidth(20);
+        // Subtítulo con fecha
+        $sheet->mergeCells('A2:G2');
+        $sheet->setCellValue('A2', 'Generado el ' . date('d/m/Y H:i'));
+        $sheet->getStyle('A2')->applyFromArray([
+            'font' => [
+                'italic' => true,
+                'size' => 9
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER
+            ]
+        ]);
         
-        // Encabezados
-        $sheet->setCellValue('A1', 'ID');
-        $sheet->setCellValue('B1', 'Código de Barras');
-        $sheet->setCellValue('C1', 'Descripción');
-        $sheet->setCellValue('D1', 'Categoría');
-        $sheet->setCellValue('E1', 'Stock');
-        $sheet->setCellValue('F1', 'Precio Compra');
-        $sheet->setCellValue('G1', 'Precio Venta');
-        $sheet->setCellValue('H1', 'Fecha Creación');
+        // Espacio entre título y tabla
+        $sheet->setCellValue('A3', '');
         
-        // Datos
-        $fila = 2;
+        // Encabezados de tabla (comienzan en fila 4)
+        $sheet->setCellValue('A4', 'ID');
+        $sheet->setCellValue('B4', 'CÓDIGO');
+        $sheet->setCellValue('C4', 'DESCRIPCIÓN');
+        $sheet->setCellValue('D4', 'CATEGORÍA');
+        $sheet->setCellValue('E4', 'STOCK');
+        $sheet->setCellValue('F4', 'PRECIO COMPRA');
+        $sheet->setCellValue('G4', 'PRECIO VENTA');
+        
+        // Aplicar estilos a encabezados
+        $sheet->getStyle('A4:G4')->applyFromArray($headerStyle);
+        
+        // ------------------------------
+        // FORMATO DE COLUMNAS
+        // ------------------------------
+        $sheet->getColumnDimension('A')->setWidth(8);  // ID
+        $sheet->getColumnDimension('B')->setWidth(18); // Código
+        $sheet->getColumnDimension('C')->setWidth(40); // Descripción
+        $sheet->getColumnDimension('D')->setWidth(20); // Categoría
+        $sheet->getColumnDimension('E')->setWidth(12); // Stock
+        $sheet->getColumnDimension('F')->setWidth(15); // P. Compra
+        $sheet->getColumnDimension('G')->setWidth(15); // P. Venta
+        
+        // Autoajustar altura fila encabezados
+        $sheet->getRowDimension(4)->setRowHeight(25);
+        
+        // ------------------------------
+        // LLENADO DE DATOS
+        // ------------------------------
+        $fila = 5;
         foreach ($datos as $producto) {
             $sheet->setCellValue('A'.$fila, $producto['id']);
             $sheet->setCellValue('B'.$fila, $producto['codigo_barras']);
@@ -113,20 +201,57 @@ function exportarExcel($datos) {
             $sheet->setCellValue('E'.$fila, $producto['cantidad']);
             $sheet->setCellValue('F'.$fila, $producto['precio_compra']);
             $sheet->setCellValue('G'.$fila, $producto['precio_venta']);
-            $sheet->setCellValue('H'.$fila, $producto['fecha_creacion']);
+            
+            // Estilo condicional para stock
+            $stockCell = 'E'.$fila;
+            if ($producto['cantidad'] <= $producto['stock_minimo']) {
+                $sheet->getStyle($stockCell)
+                    ->getFont()->getColor()->setARGB(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_RED);
+                $sheet->getStyle($stockCell)
+                    ->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB('FFEBEE');
+            } elseif ($producto['cantidad'] <= ($producto['stock_minimo'] + 10)) {
+                $sheet->getStyle($stockCell)
+                    ->getFont()->getColor()->setARGB(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_DARKYELLOW);
+                $sheet->getStyle($stockCell)
+                    ->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB('FFF3E0');
+            }
+            
             $fila++;
         }
         
-        // Formato de moneda
-        $sheet->getStyle('F2:G'.$fila)->getNumberFormat()->setFormatCode('"$"#,##0.00');
+        // Aplicar estilo general al cuerpo
+        $sheet->getStyle('A5:G'.($fila-1))->applyFromArray($bodyStyle);
         
-        // Congelar primera fila
-        $sheet->freezePane('A2');
+        // Formato de números
+        $sheet->getStyle('E5:E'.$fila)->applyFromArray($numberStyle); // Stock
+        $sheet->getStyle('F5:G'.$fila)->getNumberFormat()->setFormatCode('"$"#,##0.00'); // Precios
         
-        // Configurar headers
+        // Totales y resumen
+        $sheet->setCellValue('D'.$fila, 'TOTAL PRODUCTOS:');
+        $sheet->setCellValue('E'.$fila, count($datos));
+        $sheet->getStyle('D'.$fila.':E'.$fila)->applyFromArray([
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => 'E9ECEF']
+            ]
+        ]);
+        
+        // Congelar paneles (encabezados visibles al desplazar)
+        $sheet->freezePane('A5');
+        
+        // Proteger celdas (opcional)
+        $sheet->getProtection()->setSheet(true);
+        $sheet->getStyle('A5:G'.($fila-1))->getProtection()->setLocked(\PhpOffice\PhpSpreadsheet\Style\Protection::PROTECTION_UNPROTECTED);
+        
+        // ------------------------------
+        // GENERACIÓN DEL ARCHIVO
+        // ------------------------------
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="productos_'.date('YmdHis').'.xlsx"');
-        header('Cache-Control: max-age=0');
+        header('Content-Disposition: attachment;filename="Productos_EasyStock_'.date('Y-m-d').'.xlsx"');
+        header('Cache-Control: max-age=0, must-revalidate');
         
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         ob_end_clean();
@@ -134,15 +259,19 @@ function exportarExcel($datos) {
         exit;
         
     } catch (\Exception $e) {
-        die("Error al generar Excel: " . $e->getMessage());
+        die("❌ Error al generar Excel: " . $e->getMessage());
     }
 }
 
+// ==============================================
+// FUNCIÓN PARA EXPORTAR A CSV
+// ==============================================
 function exportarCSV($datos) {
     try {
         // Configurar headers
         header('Content-Type: text/csv; charset=UTF-8');
-        header('Content-Disposition: attachment;filename="productos_'.date('YmdHis').'.csv"');
+        header('Content-Disposition: attachment;filename="Productos_EasyStock_'.date('Y-m-d').'.csv"');
+        header('Cache-Control: max-age=0');
         
         // Abrir output
         $output = fopen('php://output', 'w');
@@ -170,22 +299,33 @@ function exportarCSV($datos) {
             ], ';');
         }
         
+        // Agregar línea de resumen
+        fputcsv($output, ['', '', '', '', '', '', '', ''], ';');
+        fputcsv($output, [
+            '', '', 'TOTAL PRODUCTOS:', count($datos),
+            'Mín. Stock:', min(array_column($datos, 'cantidad')),
+            'Máx. Stock:', max(array_column($datos, 'cantidad'))
+        ], ';');
+        
         ob_end_clean();
         fclose($output);
         exit;
         
     } catch (\Exception $e) {
-        die("Error al generar CSV: " . $e->getMessage());
+        die("❌ Error al generar CSV: " . $e->getMessage());
     }
 }
 
+// ==============================================
+// FUNCIÓN PARA EXPORTAR A PDF
+// ==============================================
 function exportarPDF($productos) {
     // Limpieza exhaustiva de buffers
     while (ob_get_level()) {
         ob_end_clean();
     }
 
-    // Incluir TCPDF directamente (evitar problemas de autoloader)
+    // Incluir TCPDF
     require_once '../../vendor/tecnickcom/tcpdf/tcpdf.php';
     
     // Clase personalizada con header/footer
@@ -193,8 +333,6 @@ function exportarPDF($productos) {
         public function Header() {
             $this->SetFont('helvetica', 'B', 14);
             $this->Cell(0, 10, 'Reporte de Productos - EasyStock', 0, 1, 'C');
-            $this->SetFont('helvetica', '', 10);
-            $this->Cell(0, 10, 'Generado: '.date('d/m/Y H:i'), 0, 1, 'C');
             $this->Ln(5);
         }
         
@@ -208,7 +346,7 @@ function exportarPDF($productos) {
     // Crear instancia
     $pdf = new MYPDF('P', 'mm', 'A4', true, 'UTF-8', false);
     
-    // Configuración esencial
+    // Configuración del documento
     $pdf->SetCreator('EasyStock');
     $pdf->SetAuthor('EasyStock');
     $pdf->SetTitle('Reporte de Productos');
@@ -218,61 +356,123 @@ function exportarPDF($productos) {
     $pdf->SetAutoPageBreak(TRUE, 15);
     $pdf->AddPage();
 
-    // Construir HTML directamente (evitar concatenación compleja)
+    // Estilos CSS para PDF
     $html = '
     <style>
-        h2 { color: #0066cc; margin-bottom: 5px; font-size: 16px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }
-        th { background-color: #333333; color: white; padding: 5px; text-align: left; }
-        td { padding: 5px; border: 1px solid #dddddd; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .stock-bajo { color: #ff0000; font-weight: bold; }
-        .stock-medio { color: #ff9900; }
-        .stock-alto { color: #00aa00; }
+        h2 {
+            color: #1A3A2F;
+            font-size: 16pt;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #1A3A2F;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 9pt;
+        }
+        
+        th {
+            background-color: #1A3A2F;
+            color: #FFFFFF;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #1A3A2F;
+        }
+        
+        td {
+            padding: 7px;
+            border: 1px solid #E0E0E0;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #F8F9FA;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .stock-bajo {
+            color: #DC3545;
+            font-weight: bold;
+        }
+        
+        .stock-medio {
+            color: #FFC107;
+        }
+        
+        .stock-ok {
+            color: #28A745;
+        }
+        
+        .total-row {
+            font-weight: bold;
+            background-color: #E9ECEF !important;
+        }
     </style>
-    
-    <h2>LISTADO DE PRODUCTOS</h2>
-    
+
+    <h2>REPORTE DE PRODUCTOS</h2>
+
     <table>
-        <tr>
-            <th width="10%">ID</th>
-            <th width="20%">Código</th>
-            <th width="30%">Descripción</th>
-            <th width="15%">Categoría</th>
-            <th width="10%" class="text-center">Stock</th>
-            <th width="15%" class="text-right">P. Venta</th>
-        </tr>';
+        <thead>
+            <tr>
+                <th width="8%">ID</th>
+                <th width="20%">Código</th>
+                <th width="32%">Descripción</th>
+                <th width="20%">Categoría</th>
+                <th width="10%" class="text-center">Stock</th>
+                <th width="10%" class="text-right">P. Venta</th>
+            </tr>
+        </thead>
+        <tbody>';
 
     foreach ($productos as $producto) {
-        $stockClass = ($producto['cantidad'] <= 5) ? 'stock-bajo' : 
-                     (($producto['cantidad'] <= 15) ? 'stock-medio' : 'stock-alto');
+        $stockClass = '';
+        if ($producto['cantidad'] <= $producto['stock_minimo']) {
+            $stockClass = 'stock-bajo';
+        } elseif ($producto['cantidad'] <= ($producto['stock_minimo'] + 10)) {
+            $stockClass = 'stock-medio';
+        } else {
+            $stockClass = 'stock-ok';
+        }
         
         $html .= '
-        <tr>
-            <td>'.$producto['id'].'</td>
-            <td>'.$producto['codigo_barras'].'</td>
-            <td>'.htmlspecialchars($producto['descripcion']).'</td>
-            <td>'.$producto['categoria'].'</td>
-            <td class="text-center '.$stockClass.'">'.$producto['cantidad'].'</td>
-            <td class="text-right">$'.number_format($producto['precio_venta'], 2).'</td>
-        </tr>';
+            <tr>
+                <td>'.$producto['id'].'</td>
+                <td>'.$producto['codigo_barras'].'</td>
+                <td>'.htmlspecialchars($producto['descripcion']).'</td>
+                <td>'.$producto['categoria'].'</td>
+                <td class="text-center '.$stockClass.'">'.$producto['cantidad'].'</td>
+                <td class="text-right">$'.number_format($producto['precio_venta'], 2).'</td>
+            </tr>';
     }
 
+    // Pie de tabla con resumen
     $html .= '
+            <tr class="total-row">
+                <td colspan="4">TOTAL PRODUCTOS</td>
+                <td class="text-center">'.count($productos).'</td>
+                <td></td>
+            </tr>
+        </tbody>
     </table>
     
-    <div style="margin-top: 20px; font-size: 10px;">
-        <strong>Total productos: </strong>'.count($productos).'
-        <div style="border-top: 1px solid #333; width: 200px; margin-top: 20px; padding-top: 3px;">
-            Firma responsable: _______________________
-        </div>
+    <div style="margin-top: 20px; font-size: 8pt; color: #666;">
+        Generado el '.date('d/m/Y H:i').' por '.htmlspecialchars($_SESSION['nombre_usuario'] ?? 'EasyStock').'
     </div>';
 
-    // Escribir contenido (método más confiable)
+    // Escribir contenido
     $pdf->writeHTML($html, true, false, true, false, '');
     
     // Generar PDF
-    $pdf->Output('reporte_productos_'.date('Ymd_His').'.pdf', 'D');
+    $pdf->Output('Reporte_Productos_'.date('Y-m-d').'.pdf', 'D');
     exit;
 }

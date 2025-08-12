@@ -76,7 +76,8 @@ $stmt->execute();
 $resultado = $stmt->get_result();
 ?>
 
-<div class="container mt-4">
+<div class="container-fluid py-4">
+    <?php include 'ventas_navbar.php'; ?>
     <div class="card p-4 shadow-sm" style="border-top: 4px solid #d4af37;">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 style="color: #1a3a2f;">Listado de Cotizaciones</h2>

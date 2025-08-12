@@ -18,7 +18,8 @@ while ($cat = $result_cat->fetch_assoc()) {
 }
 ?>
 
-<div class="container-fluid px-4">
+<div class="container-fluid py-4">
+    <?php include 'productos_navbar.php'; ?>
     <div class="card shadow-lg border-0 rounded-3 overflow-hidden mt-4">
         <div class="card-header bg-secondary text-white py-3">
             <div class="d-flex justify-content-between align-items-center">
