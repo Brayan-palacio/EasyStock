@@ -1,4 +1,17 @@
 <?php
+// Configuración de seguridad
+header("X-Frame-Options: DENY");
+header("X-Content-Type-Options: nosniff");
+header("X-XSS-Protection: 1; mode=block");
+header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+
+// Verificar versión de PHP
+if (version_compare(PHP_VERSION, '7.4.0', '<')) {
+    error_log("Versión de PHP insegura: " . PHP_VERSION);
+    die("Se requiere PHP 7.4 o superior por razones de seguridad.");
+}
+
 session_start();
 $conexion = new mysqli('localhost', 'root', '', 'sistema_inventario');
 $conexion->set_charset("utf8");
@@ -11,9 +24,18 @@ if ($conexion->connect_error) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Verificar token CSRF
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        $_SESSION['error'] = "Token de seguridad inválido.";
+        header("Location: ../login.php");
+        exit;
+    }
+    
     $usuario = trim($_POST['usuario'] ?? '');
     $password = $_POST['contraseña'] ?? '';
-
+    $ip = $_SERVER['REMOTE_ADDR'];
+    
+    // Validar y sanitizar entradas
     if (empty($usuario) || empty($password)) {
         $_SESSION['error'] = "Usuario y contraseña son requeridos";
         header("Location: ../login.php");
