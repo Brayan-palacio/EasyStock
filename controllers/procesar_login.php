@@ -23,6 +23,33 @@ if ($conexion->connect_error) {
     exit;
 }
 
+// Función para registrar intentos de login
+function registrar_intento_login($conexion, $usuario, $exitoso, $ip) {
+    $stmt = $conexion->prepare("INSERT INTO intentos_login (usuario, fecha, exitoso, ip) VALUES (?, NOW(), ?, ?)");
+    $stmt->bind_param("sis", $usuario, $exitoso, $ip);
+    $stmt->execute();
+    $stmt->close();
+}
+
+// Función para verificar si hay demasiados intentos fallidos
+function verificar_intentos_fallidos($conexion, $usuario, $ip) {
+    $limite_intentos = 5; // Límite de intentos fallidos
+    $minutos_bloqueo = 15; // Tiempo de bloqueo en minutos
+    
+    $stmt = $conexion->prepare("SELECT COUNT(*) as intentos 
+                                FROM intentos_login 
+                                WHERE (usuario = ? OR ip = ?) 
+                                AND exitoso = 0 
+                                AND fecha > DATE_SUB(NOW(), INTERVAL ? MINUTE)");
+    $stmt->bind_param("ssi", $usuario, $ip, $minutos_bloqueo);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    
+    return $row['intentos'] >= $limite_intentos;
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Verificar token CSRF
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
@@ -41,7 +68,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         header("Location: ../login.php");
         exit;
     }
-
+    
+    // Verificar si hay demasiados intentos fallidos
+    if (verificar_intentos_fallidos($conexion, $usuario, $ip)) {
+        $_SESSION['error'] = "Demasiados intentos fallidos. Por favor, espere 15 minutos antes de intentar nuevamente.";
+        registrar_intento_login($conexion, $usuario, 0, $ip);
+        header("Location: ../login.php");
+        exit;
+    }
+    
     // Consulta modificada para buscar por nombre de usuario
     $sql = "SELECT id, nombre, usuario, contraseña, rol_usuario, estado, imagen, grupo_id 
             FROM usuarios 
@@ -66,6 +101,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Verificar estado del usuario
         if ($user['estado'] !== 'Activo') {
             $_SESSION['error'] = "Tu cuenta está inactiva. Contacta al administrador.";
+            registrar_intento_login($conexion, $usuario, 0, $ip);
             header("Location: ../login.php");
             exit;
         }
@@ -89,6 +125,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $updateStmt->execute();
                 $updateStmt->close();
             }
+            
+            // Registrar intento exitoso
+            registrar_intento_login($conexion, $usuario, 1, $ip);
 
             $stmt->close();
             $conexion->close();
@@ -99,8 +138,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 
-    // Credenciales incorrectas
+    // Credenciales incorrectas - añadir retraso para prevenir fuerza bruta
+    sleep(2); // Retraso de 2 segundos después de un intento fallido
+    
     $_SESSION['error'] = "Usuario o contraseña incorrectos";
+    registrar_intento_login($conexion, $usuario, 0, $ip);
+    
     if (isset($stmt)) $stmt->close();
     header("Location: ../login.php");
     exit;
