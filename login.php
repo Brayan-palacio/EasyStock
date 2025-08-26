@@ -15,7 +15,14 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
 
 require 'config/conexion.php';
 require 'config/config.php';
+
+// Si el usuario ya está logueado, redirigir al inicio
+if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
+    header("Location: index.php");
+    exit;
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
