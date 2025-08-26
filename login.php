@@ -263,14 +263,14 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                 <div class="mb-3">
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
-                        <input type="text" name="usuario" class="form-control" placeholder="Usuario" required autofocus>
+                        <input type="text" name="usuario" class="form-control" placeholder="Usuario" required autofocus maxlength="50">
                     </div>
                 </div>
                 
                 <div class="mb-3">
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                        <input type="password" name="contraseña" class="form-control" placeholder="Contraseña" required>
+                        <input type="password" name="contraseña" class="form-control" placeholder="Contraseña" required maxlength="255">
                     </div>
                 </div>
                 
