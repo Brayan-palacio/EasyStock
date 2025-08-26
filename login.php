@@ -1,11 +1,20 @@
 <?php
 session_start();
-require 'config/conexion.php';
-require 'config/config.php';
+
+// Generar token CSRF si no existe
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // Configuración de seguridad de headers
 header("X-Frame-Options: DENY");
 header("X-Content-Type-Options: nosniff");
 header("X-XSS-Protection: 1; mode=block");
+header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+
+require 'config/conexion.php';
+require 'config/config.php';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -243,6 +252,7 @@ header("X-XSS-Protection: 1; mode=block");
             <?php endif; ?>
             
             <form id="loginForm" action="controllers/procesar_login.php" method="POST" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                 <div class="mb-3">
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
