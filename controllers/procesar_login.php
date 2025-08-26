@@ -13,6 +13,17 @@ if (version_compare(PHP_VERSION, '7.4.0', '<')) {
 }
 
 session_start();
+
+// Regenerar ID de sesión después de iniciar para prevenir fijación de sesión
+session_regenerate_id(true);
+
+// Añadir tiempo de inactividad de sesión (30 minutos)
+if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > 1800)) {
+    session_unset();
+    session_destroy();
+}
+$_SESSION['LAST_ACTIVITY'] = time();
+
 $conexion = new mysqli('localhost', 'root', '', 'sistema_inventario');
 $conexion->set_charset("utf8");
 
@@ -115,6 +126,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['rol_usuario'] = $user['rol_usuario'];
             $_SESSION['grupo_id'] = $user['grupo_id'];
             $_SESSION['imagen'] = !empty($user['imagen']) ? "assets/img/usuarios/" . $user['imagen'] : "assets/img/usuario-default.png";
+            $_SESSION['logged_in'] = true;
+            
+            // Regenerar ID de sesión después de login exitoso para prevenir hijacking
+            session_regenerate_id(true);
 
             // Actualizar último login
             $fechaHora = date('Y-m-d H:i:s');
