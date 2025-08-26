@@ -71,9 +71,8 @@ ob_start();
             --accent: #4e8cff;
             --light-bg: #f8fafc;
             --dark-bg: #1e293b;
-            --sidebar-width: 280px;
-            --sidebar-collapsed-width: 70px;
-            --header-height: 70px;
+            --sidebar-width: 240px;
+            --header-height: 60px;
             --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
         
@@ -101,58 +100,19 @@ ob_start();
             border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
         
-        /* Barra colapsada */
-        .sidebar.collapsed {
-            width: var(--sidebar-collapsed-width);
-            overflow: hidden;
-        }
-        
-        .sidebar.collapsed .sidebar-brand h2,
-        .sidebar.collapsed .nav-link span,
-        .sidebar.collapsed .nav-link .arrow,
-        .sidebar.collapsed .user-info,
-        .sidebar.collapsed .user-dropdown i.fa-chevron-down {
-            display: none !important;
-        }
-        
-        .sidebar.collapsed .sidebar-brand {
-            justify-content: center;
-            padding: 0;
-        }
-        
-        .sidebar.collapsed .sidebar-brand img {
-            margin-right: 0;
-        }
-        
-        .sidebar.collapsed .nav-link {
-            justify-content: center;
-            padding: 12px 0;
-            margin: 4px 0;
-        }
-        
-        .sidebar.collapsed .nav-link i {
-            margin-right: 0;
-            font-size: 1.3rem;
-        }
-        
-        .sidebar.collapsed .submenu .nav-link {
-            padding-left: 0;
-            justify-content: center;
-        }
-        
         .sidebar-brand {
             height: var(--header-height);
             display: flex;
             align-items: center;
             justify-content: flex-start;
-            padding: 0 25px;
+            padding: 0 15px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             transition: var(--transition);
         }
         
         .sidebar-brand h2 {
             font-weight: 700;
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             margin: 0;
             white-space: nowrap;
             letter-spacing: 0.5px;
@@ -160,20 +120,20 @@ ob_start();
         }
         
         .sidebar-brand img {
-            height: 36px;
-            margin-right: 12px;
+            height: 30px;
+            margin-right: 10px;
             filter: brightness(1) invert(0);
             transition: var(--transition);
         }
         
         .sidebar-content {
-            padding: 20px 0;
+            padding: 15px 0;
             height: calc(100vh - var(--header-height));
             overflow-y: auto;
         }
         
         .sidebar-content::-webkit-scrollbar {
-            width: 5px;
+            width: 4px;
         }
         
         .sidebar-content::-webkit-scrollbar-thumb {
@@ -184,15 +144,15 @@ ob_start();
         .nav-link {
             color: rgba(255, 255, 255, 0.85);
             border-radius: 6px;
-            margin: 4px 15px;
-            padding: 12px 20px;
+            margin: 3px 10px;
+            padding: 10px 15px;
             transition: var(--transition);
             font-weight: 500;
             display: flex;
             align-items: center;
             position: relative;
             overflow: hidden;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
         
         .nav-link:hover, .nav-link.active {
@@ -218,21 +178,21 @@ ob_start();
         }
         
         .nav-link i {
-            width: 24px;
+            width: 20px;
             text-align: center;
-            margin-right: 12px;
-            font-size: 1.1rem;
+            margin-right: 10px;
+            font-size: 1rem;
             transition: var(--transition);
         }
         
         .nav-link.active i {
             color: var(--secondary);
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
         
         .nav-link .arrow {
             margin-left: auto;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             transition: transform 0.3s ease;
         }
         
@@ -241,13 +201,13 @@ ob_start();
         }
         
         .submenu {
-            padding-left: 15px;
+            padding-left: 10px;
         }
         
         .submenu .nav-link {
             margin: 2px 0;
-            padding: 10px 15px 10px 45px;
-            font-size: 0.9rem;
+            padding: 8px 12px 8px 38px;
+            font-size: 0.85rem;
             background: transparent;
             color: rgba(255, 255, 255, 0.7);
         }
@@ -284,11 +244,6 @@ ob_start();
             background-color: var(--light-bg);
         }
         
-        /* Ajustar cuando está colapsado */
-        .sidebar.collapsed + .main-content {
-            margin-left: var(--sidebar-collapsed-width);
-        }
-        
         /* Header Profesional */
         .main-header {
             height: var(--header-height);
@@ -298,17 +253,12 @@ ob_start();
             left: var(--sidebar-width);
             z-index: 999;
             background: white;
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.04); /* Sombra más suave */
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 30px;
+            padding: 0 20px;
             transition: var(--transition);
-        }
-        
-        /* Ajustar header cuando está colapsado */
-        .sidebar.collapsed ~ .main-header {
-            left: var(--sidebar-collapsed-width);
         }
         
         .header-left {
@@ -317,23 +267,13 @@ ob_start();
         }
         
         #sidebarToggle {
-            background: transparent;
-            border: none;
-            color: var(--primary);
-            font-size: 1.2rem;
-            margin-right: 20px;
-            transition: var(--transition);
-        }
-        
-        #sidebarToggle:hover {
-            color: var(--secondary);
-            transform: scale(1.1);
+            display: none;
         }
         
         .date-time {
             display: flex;
             align-items: center;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
         
         #currentDate {
@@ -343,12 +283,12 @@ ob_start();
         
         #currentTime {
             background: var(--primary);
-            padding: 5px 10px;
+            padding: 4px 8px;
             border-radius: 20px;
             color: white;
             font-weight: 600;
-            font-size: 0.8rem;
-            margin-left: 10px;
+            font-size: 0.75rem;
+            margin-left: 8px;
         }
         
         /* User Dropdown Premium */
@@ -357,7 +297,7 @@ ob_start();
             align-items: center;
             cursor: pointer;
             position: relative;
-            padding: 8px 12px;
+            padding: 6px 10px;
             border-radius: 50px;
             transition: var(--transition);
         }
@@ -367,11 +307,11 @@ ob_start();
         }
 
         .user-avatar {
-            width: 42px;
-            height: 42px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             object-fit: cover;
-            margin-right: 12px;
+            margin-right: 10px;
             border: 2px solid var(--secondary);
             box-shadow: 0 0 0 2px var(--light-bg);
             transition: var(--transition);
@@ -390,8 +330,8 @@ ob_start();
             background: #ff4757;
             color: white;
             border-radius: 50%;
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -410,45 +350,6 @@ ob_start();
             .sidebar.show {
                 transform: translateX(0);
                 box-shadow: 10px 0 30px rgba(0, 0, 0, 0.2);
-            }
-            
-            .sidebar.collapsed {
-                transform: translateX(-100%);
-            }
-            
-            .sidebar.collapsed.show {
-                transform: translateX(0);
-                width: var(--sidebar-width);
-            }
-            
-            .sidebar.collapsed .sidebar-brand h2,
-            .sidebar.collapsed .nav-link span,
-            .sidebar.collapsed .nav-link .arrow {
-                display: block !important;
-            }
-            
-            .sidebar.collapsed .sidebar-brand {
-                justify-content: flex-start;
-                padding: 0 25px;
-            }
-            
-            .sidebar.collapsed .sidebar-brand img {
-                margin-right: 12px;
-            }
-            
-            .sidebar.collapsed .nav-link {
-                justify-content: flex-start;
-                padding: 12px 20px;
-                margin: 4px 15px;
-            }
-            
-            .sidebar.collapsed .nav-link i {
-                margin-right: 12px;
-            }
-            
-            .sidebar.collapsed .submenu .nav-link {
-                padding-left: 45px;
-                justify-content: flex-start;
             }
             
             .main-content {
@@ -475,6 +376,22 @@ ob_start();
             .sidebar-overlay.show {
                 opacity: 1;
                 visibility: visible;
+            }
+
+            /* Mostramos el botón de toggle solo en móviles */
+            #sidebarToggle {
+                display: block;
+                background: transparent;
+                border: none;
+                color: var(--primary);
+                font-size: 1.2rem;
+                margin-right: 15px;
+                transition: var(--transition);
+            }
+            
+            #sidebarToggle:hover {
+                color: var(--secondary);
+                transform: scale(1.1);
             }
         }
         
@@ -517,8 +434,8 @@ ob_start();
         }
         
         .avatar-container {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             display: inline-block;
             position: relative;
         }
@@ -534,7 +451,7 @@ ob_start();
         .avatar-icon {
             width: 100%;
             height: 100%;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -545,11 +462,11 @@ ob_start();
             background: linear-gradient(135deg, #ffd700 0%, #ffbf00 100%);
             color: #000;
             padding: 0.15em 0.35em;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             border: 1px solid #fff;
             border-radius: 50%;
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -559,18 +476,19 @@ ob_start();
             font-weight: 500;
             display: block;
             line-height: 1.2;
+            font-size: 0.9rem;
         }
 
         .user-role {
             display: block;
             line-height: 1.2;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
         }
         
         /* Tooltips para barra colapsada */
         .tooltip-inner {
             background-color: var(--primary);
-            font-size: 0.8rem;
+            font-size: 0.75rem;
         }
         
         .bs-tooltip-auto[data-popper-placement^=right] .tooltip-arrow::before, 
@@ -590,7 +508,7 @@ ob_start();
             <h2>EASYSTOCK</h2>
         </div>
         
-        <div class="sidebar-content pt-3">
+        <div class="sidebar-content pt-2">
             <ul class="nav flex-column">
                 <li class="nav-item">
                     <a href="dashboard.php" class="nav-link <?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'active' : ''; ?>" data-bs-toggle="tooltip" data-bs-placement="right" title="Dashboard">
@@ -737,7 +655,7 @@ ob_start();
                             0
                         </span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end animate-fade-in p-0" style="width: 320px; max-height: 400px; overflow-y: auto;" aria-labelledby="dropdownNotificaciones">
+                    <ul class="dropdown-menu dropdown-menu-end animate-fade-in p-0" style="width: 300px; max-height: 350px; overflow-y: auto;" aria-labelledby="dropdownNotificaciones">
                         <li><h6 class="dropdown-header bg-light py-2">Notificaciones</h6></li>
                         <div id="listaNotificaciones">
                             <!-- Las notificaciones se cargarán aquí dinámicamente -->
@@ -786,10 +704,7 @@ ob_start();
             </div>
         </header>
         <!-- Contenido Principal -->
-
-
-
-<script>
+         <script>
 $(document).ready(function() {
     // Inicializar tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -799,34 +714,15 @@ $(document).ready(function() {
         });
     });
 
-    // Toggle sidebar collapse/expand
+    // En pantallas grandes, el botón de toggle está oculto
+    // Solo funciona en dispositivos móviles (<= 992px)
     $('#sidebarToggle').click(function() {
-        $('.sidebar').toggleClass('collapsed');
-        
-        // Si es móvil, mantener el comportamiento original
-        if ($(window).width() <= 992) {
-            $('.sidebar').toggleClass('show');
-            $('.sidebar-overlay').toggleClass('show');
-            $('body').toggleClass('overflow-hidden');
-        }
-        
-        // Actualizar tooltips
-        tooltipList.forEach(function(tooltip) {
-            tooltip.dispose();
-        });
-        
-        tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl, {
-                trigger: 'hover'
-            });
-        });
-        
-        // Guardar estado en localStorage
-        localStorage.setItem('sidebarCollapsed', $('.sidebar').hasClass('collapsed'));
+        $('.sidebar').toggleClass('show');
+        $('.sidebar-overlay').toggleClass('show');
+        $('body').toggleClass('overflow-hidden');
     });
     
-    // Cargar estado del sidebar
+    // Cargar estado del sidebar desde localStorage
     if (localStorage.getItem('sidebarCollapsed') === 'true') {
         $('.sidebar').addClass('collapsed');
     }
@@ -887,7 +783,7 @@ $(document).ready(function() {
             $('.sidebar-content').slimScroll({
                 height: 'calc(100vh - var(--header-height))',
                 position: 'right',
-                size: "5px",
+                size: "4px",
                 color: 'rgba(255,255,255,0.2)',
                 wheelStep: 10,
                 touchScrollStep: 100
@@ -999,4 +895,3 @@ $(document).ready(function() {
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
