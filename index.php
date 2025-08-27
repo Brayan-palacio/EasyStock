@@ -2,12 +2,10 @@
 session_start();
 
 // Verificar sesión y permisos
-if (!isset($_SESSION['id_usuario']) || empty($_SESSION['nombre'])) {
+if (!isset($_SESSION['id_usuario']) || empty($_SESSION['nombre']) || !isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: login.php");
     exit;
 }
-
-include 'includes/header.php';
 
 // Verificar si el usuario ya cerró el mensaje anteriormente
 $mostrarMensaje = true;
