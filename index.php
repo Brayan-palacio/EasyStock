@@ -9,6 +9,11 @@ if (!isset($_SESSION['id_usuario']) || empty($_SESSION['nombre']) || !isset($_SE
 
 // Verificar si el usuario ya cerró el mensaje anteriormente
 $mostrarMensaje = true;
+if (isset($_COOKIE['mensajeBienvenidaOcultado']) && $_COOKIE['mensajeBienvenidaOcultado'] === 'true') {
+    $mostrarMensaje = false;
+}
+
+include 'includes/header.php';
 ?>
 
 <style>
