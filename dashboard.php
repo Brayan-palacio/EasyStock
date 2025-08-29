@@ -1,34 +1,59 @@
 <?php
+// dashboard.php (VERSIÓN SEGURA)
+session_start();
+
+// VERIFICACIÓN DE SEGURIDAD OBLIGATORIA
+if (!isset($_SESSION['id_usuario']) || $_SESSION['logged_in'] !== true) {
+    header("Location: login.php");
+    exit;
+}
+
 $tituloPagina = 'Panel de Control - EasyStock';
 include 'config/conexion.php';
 
-// Configuración de formato y funciones
+// Configuración
 define('FORMATO_MONEDA', '$%s');
 define('ITEMS_POR_SECCION', 5);
-
 $ultima_semana = date('Y-m-d', strtotime('-7 days'));
 
-// Ventas en los últimos 7 días
-$ventas_7dias = $conexion->query("SELECT COUNT(*) AS total FROM ventas WHERE DATE(fecha_venta) >= '$ultima_semana'")->fetch_assoc()['total'];
+// FUNCIÓN SEGURA PARA CONSULTAS
+function ejecutarConsultaSegura($conexion, $sql, $tipos = '', $parametros = []) {
+    $stmt = $conexion->prepare($sql);
+    if ($tipos && $parametros) {
+        $stmt->bind_param($tipos, ...$parametros);
+    }
+    $stmt->execute();
+    return $stmt->get_result();
+}
 
-// Productos nuevos en los últimos 7 días
-$productos_7dias = $conexion->query("SELECT COUNT(*) AS total FROM productos WHERE DATE(fecha_creacion) >= '$ultima_semana'")->fetch_assoc()['total'];
+// CONSULTAS SEGURAS (con prepared statements)
+$result_ventas = ejecutarConsultaSegura($conexion, 
+    "SELECT COUNT(*) AS total FROM ventas WHERE DATE(fecha_venta) >= ?",
+    's', [$ultima_semana]
+);
+$ventas_7dias = $result_ventas->fetch_assoc()['total'];
 
-// Clientes nuevos en los últimos 7 días
-$clientes_7dias = $conexion->query("SELECT COUNT(*) AS total FROM clientes WHERE DATE(creado_en) >= '$ultima_semana'")->fetch_assoc()['total'];
+$result_productos = ejecutarConsultaSegura($conexion,
+    "SELECT COUNT(*) AS total FROM productos WHERE DATE(fecha_creacion) >= ?",
+    's', [$ultima_semana]
+);
+$productos_7dias = $result_productos->fetch_assoc()['total'];
 
-// Consulta actualizada: usando 'total' en lugar de 'total_venta'
-// Consulta corregida
-$query = "
-    SELECT DATE_FORMAT(fecha_venta, '%M') AS mes, 
-           SUM(total) AS total_mes
-    FROM ventas
-    WHERE fecha_venta >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-    GROUP BY MONTH(fecha_venta)
-    ORDER BY MONTH(fecha_venta)
-";
+$result_clientes = ejecutarConsultaSegura($conexion,
+    "SELECT COUNT(*) AS total FROM clientes WHERE DATE(creado_en) >= ?", 
+    's', [$ultima_semana]
+);
+$clientes_7dias = $result_clientes->fetch_assoc()['total'];
 
-$resultado = $conexion->query($query);
+// Consulta para gráfico de ventas
+$resultado = ejecutarConsultaSegura($conexion,
+    "SELECT DATE_FORMAT(fecha_venta, '%M') AS mes, 
+            SUM(total) AS total_mes
+     FROM ventas
+     WHERE fecha_venta >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+     GROUP BY MONTH(fecha_venta)
+     ORDER BY MONTH(fecha_venta)"
+);
 
 $meses = [];
 $ventas = [];
@@ -43,10 +68,12 @@ function obtenerTotal($conexion, $tabla, $filtro_mes = false) {
     
     if ($filtro_mes && $tabla === 'ventas') {
         $mes_actual = date('Y-m');
-        $query_str .= " WHERE DATE_FORMAT(fecha_venta, '%Y-%m') = '$mes_actual'";
+        $query = $conexion->prepare("$query_str WHERE DATE_FORMAT(fecha_venta, '%Y-%m') = ?");
+        $query->bind_param('s', $mes_actual);
+    } else {
+        $query = $conexion->prepare($query_str);
     }
     
-    $query = $conexion->prepare($query_str);
     $query->execute();
     $result = $query->get_result();
     return $result->fetch_assoc()['total'];
@@ -69,7 +96,7 @@ function obtenerDatosGraficoVentas($conexion, $year = null) {
 }
 
 // Obtener años disponibles para el selector
-$years_query = $conexion->query("SELECT DISTINCT YEAR(fecha_venta) as year FROM ventas ORDER BY year DESC");
+$years_query = ejecutarConsultaSegura($conexion, "SELECT DISTINCT YEAR(fecha_venta) as year FROM ventas ORDER BY year DESC");
 $available_years = [];
 while ($row = $years_query->fetch_assoc()) {
     $available_years[] = $row['year'];
@@ -99,7 +126,7 @@ $stats = [
 
 // Consultas para las secciones con manejo de errores
 try {
-    $productos_mas_vendidos = $conexion->query("
+    $productos_mas_vendidos = ejecutarConsultaSegura($conexion, "
         SELECT p.id, p.descripcion AS nombre, p.imagen, 
                SUM(dv.cantidad) AS total_vendido, 
                SUM(dv.cantidad * p.precio_venta) AS total_ganancias 
@@ -111,18 +138,18 @@ try {
     ) ?: throw new Exception("Error en consulta de productos más vendidos");
 
     // Consulta para obtener las últimas 5 ventas
-$ultimas_ventas = $conexion->query("
-SELECT v.id, 
-       v.total, 
-       COALESCE(c.nombre, 'Venta sin cliente') AS cliente
-FROM ventas v
-LEFT JOIN clientes c ON v.cliente_id = c.id
-ORDER BY v.fecha_venta DESC
-LIMIT 5
-") ?: throw new Exception("Error en consulta de últimas ventas");
+    $ultimas_ventas = ejecutarConsultaSegura($conexion, "
+        SELECT v.id, 
+               v.total, 
+               COALESCE(c.nombre, 'Venta sin cliente') AS cliente
+        FROM ventas v
+        LEFT JOIN clientes c ON v.cliente_id = c.id
+        ORDER BY v.fecha_venta DESC
+        LIMIT 5
+    ") ?: throw new Exception("Error en consulta de últimas ventas");
 
     // Consulta segura para productos recientes (sin stock)
-    $productos_recientes = $conexion->query("
+    $productos_recientes = ejecutarConsultaSegura($conexion, "
         SELECT id, descripcion, precio_venta, categoria_id, fecha_creacion 
         FROM productos 
         ORDER BY fecha_creacion DESC 
