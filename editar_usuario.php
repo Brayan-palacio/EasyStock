@@ -2,21 +2,26 @@
 ob_start();
 $tituloPagina = 'Editar Usuario - EasyStock';
 include 'config/conexion.php';
+include 'config/funciones.php'; // Asegúrate de incluir funciones
 include_once 'includes/header.php';
 
-// Verificar permisos (ejemplo: nivel >= 50 para editar usuarios)
-if (!isset($_SESSION['id_usuario'])) {
+// Verificar permisos de administrador
+if (!isset($_SESSION['id_usuario']) || $_SESSION['logged_in'] !== true) {
+    header("Location: login.php");
+    exit();
+}
+
+if ($_SESSION['rol_usuario'] !== 'Administrador') {
     $_SESSION['mensaje'] = [
         'tipo' => 'danger',
-        'texto' => 'Requieres nivel 50+ para esta acción'
+        'texto' => 'No tienes permisos para editar usuarios'
     ];
-    ob_end_clean();
     header("Location: administrar_usuarios.php");
     exit();
 }
 
-// Obtener ID del usuario a editar
-$usuarioId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+// Obtener ID del usuario a editar con validación
+$usuarioId = isset($_GET['id']) ? max(0, (int)$_GET['id']) : 0;
 
 // Obtener datos actuales del usuario
 $usuarioActual = null;
@@ -44,77 +49,109 @@ if (!$usuarioActual) {
 
 // Obtener grupos y roles disponibles
 $grupos = $conexion->query("SELECT id, nombre FROM grupo WHERE estado = 'Activo' ORDER BY nombre")->fetch_all(MYSQLI_ASSOC);
-$roles = ['Administrador', 'Supervisor', 'Usuario', 'Consulta']; // Ejemplo de roles
+$roles = ['Administrador', 'Supervisor', 'Usuario', 'Consulta'];
 
 // Procesar formulario
 $errores = [];
+$datos = [
+    'nombre' => $usuarioActual['nombre'],
+    'usuario' => $usuarioActual['usuario'],
+    'rol_usuario' => $usuarioActual['rol_usuario'],
+    'grupo_id' => $usuarioActual['grupo_id'],
+    'estado' => $usuarioActual['estado'],
+    'cambiar_password' => false,
+    'password' => ''
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Sanitizar inputs
-    $datos = [
-        'nombre' => trim($conexion->real_escape_string($_POST['nombre'])),
-        'usuario' => strtolower(trim($conexion->real_escape_string($_POST['usuario']))),
-        'rol_usuario' => in_array($_POST['rol_usuario'], $roles) ? $_POST['rol_usuario'] : 'Usuario',
-        'grupo_id' => (int)$_POST['grupo_id'],
-        'estado' => in_array($_POST['estado'], ['Activo', 'Inactivo']) ? $_POST['estado'] : 'Activo',
-        'cambiar_password' => isset($_POST['cambiar_password']),
-        'password' => $_POST['password'] ?? ''
-    ];
+    $datos['nombre'] = trim($_POST['nombre'] ?? '');
+    $datos['usuario'] = strtolower(trim($_POST['usuario'] ?? ''));
+    $datos['rol_usuario'] = in_array($_POST['rol_usuario'] ?? '', $roles) ? $_POST['rol_usuario'] : 'Usuario';
+    $datos['grupo_id'] = (int)($_POST['grupo_id'] ?? 0);
+    $datos['estado'] = in_array($_POST['estado'] ?? '', ['Activo', 'Inactivo']) ? $_POST['estado'] : 'Activo';
+    $datos['cambiar_password'] = isset($_POST['cambiar_password']);
+    $password = $_POST['password'] ?? '';
 
     // Validaciones
-    if (empty($datos['nombre'])) $errores[] = "Nombre completo es requerido";
+    if (empty($datos['nombre'])) {
+        $errores[] = "Nombre completo es requerido";
+    } elseif (strlen($datos['nombre']) < 2) {
+        $errores[] = "El nombre debe tener al menos 2 caracteres";
+    }
     
     if (empty($datos['usuario'])) {
         $errores[] = "Usuario es requerido";
     } elseif (!preg_match('/^[a-z0-9_]{4,20}$/', $datos['usuario'])) {
-        $errores[] = "Usuario solo puede contener letras, números y _ (4-20 caracteres)";
-    } else {
-        // Verificar si el usuario ya existe (excluyendo el actual)
-        $existe = $conexion->prepare("SELECT id FROM usuarios WHERE usuario = ? AND id != ?");
-        $existe->bind_param('si', $datos['usuario'], $usuarioId);
-        $existe->execute();
-        if ($existe->get_result()->num_rows > 0) {
-            $errores[] = "El usuario ya está en uso por otro registro";
-        }
+        $errores[] = "Usuario solo puede contener letras minúsculas, números y _ (4-20 caracteres)";
     }
 
-    if ($datos['cambiar_password'] && strlen($datos['password']) < 6) {
+    if ($datos['cambiar_password'] && strlen($password) < 6) {
         $errores[] = "Contraseña debe tener mínimo 6 caracteres";
+    }
+
+    if ($datos['grupo_id'] <= 0) {
+        $errores[] = "Debe seleccionar un grupo válido";
     }
 
     // Procesar imagen
     $imagenNombre = $usuarioActual['imagen'];
     if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
-        $extension = pathinfo($_FILES['imagen']['name'], PATHINFO_EXTENSION);
-        $extensionesPermitidas = ['jpg', 'jpeg', 'png', 'gif'];
+        // Validar tipo MIME real
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $_FILES['imagen']['tmp_name']);
+        finfo_close($finfo);
         
-        if (in_array(strtolower($extension), $extensionesPermitidas)) {
-            // Eliminar imagen anterior si existe
-            if ($imagenNombre && file_exists('assets/img/usuarios/' . $imagenNombre)) {
-                unlink('assets/img/usuarios/' . $imagenNombre);
-            }
+        $mimesPermitidos = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!in_array($mime, $mimesPermitidos)) {
+            $errores[] = "Tipo de archivo no permitido";
+        }
+        
+        // Validar tamaño (2MB máximo)
+        if ($_FILES['imagen']['size'] > 2 * 1024 * 1024) {
+            $errores[] = "La imagen no puede ser mayor a 2MB";
+        }
+        
+        if (empty($errores)) {
+            $extension = match($mime) {
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/gif' => 'gif',
+                default => null
+            };
             
-            $imagenNombre = 'user_' . time() . '.' . $extension;
-            $rutaDestino = 'assets/img/usuarios/' . $imagenNombre;
-            
-            if (!move_uploaded_file($_FILES['imagen']['tmp_name'], $rutaDestino)) {
-                $errores[] = "Error al subir la imagen";
-                $imagenNombre = $usuarioActual['imagen'];
+            if ($extension) {
+                // Eliminar imagen anterior si existe
+                if ($imagenNombre && file_exists('assets/img/usuarios/' . $imagenNombre)) {
+                    unlink('assets/img/usuarios/' . $imagenNombre);
+                }
+                
+                $imagenNombre = 'user_' . bin2hex(random_bytes(8)) . '.' . $extension;
+                $rutaDestino = 'assets/img/usuarios/' . $imagenNombre;
+                
+                if (!move_uploaded_file($_FILES['imagen']['tmp_name'], $rutaDestino)) {
+                    $errores[] = "Error al subir la imagen";
+                    $imagenNombre = $usuarioActual['imagen'];
+                }
             }
-        } else {
-            $errores[] = "Formato de imagen no válido (solo JPG, PNG, GIF)";
         }
     }
 
     // Actualizar si no hay errores
-    if (empty($errores)) {
-        // Preparar consulta según si se cambia la contraseña o no
-        if ($datos['cambiar_password']) {
-            $passwordHash = password_hash($datos['password'], PASSWORD_DEFAULT);
-            $query = "UPDATE usuarios SET
-                      nombre = ?, usuario = ?, contraseña = ?, rol_usuario = ?, 
-                      estado = ?, grupo_id = ?, imagen = ?
-                      WHERE id = ?";
-            $stmt = $conexion->prepare($query);
+if (empty($errores)) {
+    // Asegurar que imagenNombre nunca sea NULL
+    $imagenNombre = !empty($imagenNombre) ? $imagenNombre : $usuarioActual['imagen'];
+    $imagenNombre = !empty($imagenNombre) ? $imagenNombre : '';
+    
+    // Preparar consulta según si se cambia la contraseña o no
+    if ($datos['cambiar_password'] && !empty($password)) {
+        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+        $query = "UPDATE usuarios SET
+                  nombre = ?, usuario = ?, contraseña = ?, rol_usuario = ?, 
+                  estado = ?, grupo_id = ?, imagen = ?, actualizado_en = NOW()
+                  WHERE id = ?";
+        $stmt = $conexion->prepare($query);
+        if ($stmt) {
             $stmt->bind_param(
                 'sssssssi',
                 $datos['nombre'],
@@ -126,12 +163,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $imagenNombre,
                 $usuarioId
             );
-        } else {
-            $query = "UPDATE usuarios SET
-                      nombre = ?, usuario = ?, rol_usuario = ?, 
-                      estado = ?, grupo_id = ?, imagen = ?
-                      WHERE id = ?";
-            $stmt = $conexion->prepare($query);
+        }
+    } else {
+        $query = "UPDATE usuarios SET
+                  nombre = ?, usuario = ?, rol_usuario = ?, 
+                  estado = ?, grupo_id = ?, imagen = ?, actualizado_en = NOW()
+                  WHERE id = ?";
+        $stmt = $conexion->prepare($query);
+        if ($stmt) {
             $stmt->bind_param(
                 'ssssssi',
                 $datos['nombre'],
@@ -143,18 +182,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $usuarioId
             );
         }
+    }
 
-        if ($stmt->execute()) {
-            $_SESSION['mensaje'] = [
-                'tipo' => 'success',
-                'texto' => 'Usuario actualizado exitosamente!'
-            ];
-            header("Location: administrar_usuarios.php");
-            exit();
+    // Verificar si la preparación fue exitosa
+    if (!$stmt) {
+        $errores[] = "Error preparando la consulta: " . $conexion->error;
+    } elseif ($stmt->execute()) {
+        $_SESSION['mensaje'] = [
+            'tipo' => 'success',
+            'texto' => 'Usuario actualizado exitosamente!'
+        ];
+        header("Location: administrar_usuarios.php");
+        exit();
+    } else {
+        // Error específico de MySQL
+        if ($conexion->errno == 1062) {
+            $errores[] = "El nombre de usuario ya existe";
         } else {
-            $errores[] = "Error al actualizar: " . $conexion->error;
+            $errores[] = "Error de base de datos: " . $conexion->error;
         }
     }
+}
 }
 ?>
 
