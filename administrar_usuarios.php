@@ -2,32 +2,39 @@
 $tituloPagina = 'Administrar Usuarios - EasyStock';
 include 'config/conexion.php';
 include 'config/funciones.php';
-include_once 'includes/header.php';
 
-// Verificar permisos
-if (!isset($_SESSION['id_usuario'])) {
+// Iniciar sesión y verificar permisos de administrador
+session_start();
+if (!isset($_SESSION['id_usuario']) || $_SESSION['logged_in'] !== true) {
     header("Location: login.php");
     exit();
 }
 
+if ($_SESSION['rol_usuario'] !== 'Administrador') {
+    header("Location: acceso_denegado.php");
+    exit();
+}
+
+include_once 'includes/header.php';
+
 // Configuración de paginación
 $registrosPorPagina = obtenerConfiguracion($conexion, 'registros_por_pagina');
-$paginaActual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+$paginaActual = isset($_GET['pagina']) ? max(1, (int)$_GET['pagina']) : 1;
 $offset = ($paginaActual - 1) * $registrosPorPagina;
 
-// Filtros
-$busqueda = isset($_GET['busqueda']) ? $conexion->real_escape_string($_GET['busqueda']) : '';
+// Filtros - Sanitizar inputs
+$busqueda = isset($_GET['busqueda']) ? trim($_GET['busqueda']) : '';
 $filtroEstado = isset($_GET['estado']) && in_array($_GET['estado'], ['Activo', 'Inactivo']) ? $_GET['estado'] : '';
-$filtroGrupo = isset($_GET['grupo']) ? (int)$_GET['grupo'] : 0;
+$filtroGrupo = isset($_GET['grupo']) ? max(0, (int)$_GET['grupo']) : 0;
 
-// Consulta principal con joins
+// Consulta principal con prepared statements
 $query = "SELECT SQL_CALC_FOUND_ROWS 
             u.id, u.nombre, u.usuario, u.rol_usuario, u.estado, 
             u.ultimo_login, u.imagen, g.nombre AS grupo_nombre
           FROM usuarios u
           JOIN grupo g ON u.grupo_id = g.id
-          WHERE (? = '' OR u.nombre LIKE CONCAT('%', ?, '%') OR u.usuario LIKE CONCAT('%', ?, '%'))
-          AND (? = '' OR u.estado = ?)
+          WHERE (LENGTH(?) = 0 OR u.nombre LIKE CONCAT('%', ?, '%') OR u.usuario LIKE CONCAT('%', ?, '%'))
+          AND (LENGTH(?) = 0 OR u.estado = ?)
           AND (? = 0 OR u.grupo_id = ?)
           ORDER BY u.nombre ASC
           LIMIT ? OFFSET ?";
@@ -44,7 +51,7 @@ $totalPaginas = ceil($totalRegistros / $registrosPorPagina);
 // Obtener grupos para filtro
 $grupos = $conexion->query("SELECT id, nombre FROM grupo WHERE estado = 'Activo' ORDER BY nombre")->fetch_all(MYSQLI_ASSOC);
 ?>
-
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <div class="container-fluid py-4">
     <?php include 'accesos_navbar.php'; ?>
     <div class="card shadow-lg border-0 rounded-3">
@@ -132,11 +139,11 @@ $grupos = $conexion->query("SELECT id, nombre FROM grupo WHERE estado = 'Activo'
                                     <td class="fw-bold"><?= $usuario['id'] ?></td>
                                     <td>
                                         <div class="d-flex align-items-center">
-    <img src="<?= !empty($usuario['imagen']) ? 'assets/img/usuarios/' . htmlspecialchars($usuario['imagen']) : 'data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%236c757d\'><path d=\'M12 2a5 5 0 1 0 5 5 5 5 0 0 0-5-5zm0 8a3 3 0 1 1 3-3 3 3 0 0 1-3 3zm9 11v-1a7 7 0 0 0-7-7h-4a7 7 0 0 0-7 7v1h2v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1z\'/></svg>' ?>" 
+    <img src="<?= !empty($usuario['imagen']) ? 'assets/img/usuarios/' . htmlspecialchars(basename($usuario['imagen'])) : 'data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%236c757d\'><path d=\'M12 2a5 5 0 1 0 5 5 5 5 0 0 0-5-5zm0 8a3 3 0 1 1 3-3 3 3 0 0 1-3 3zm9 11v-1a7 7 0 0 0-7-7h-4a7 7 0 0 0-7 7v1h2v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1z\'/></svg>' ?>" 
          class="rounded-circle me-2 bg-light" 
          width="32" 
          height="32" 
-         alt="Foto perfil"
+         alt="Foto de perfil"
          onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%236c757d\'><path d=\'M12 2a5 5 0 1 0 5 5 5 5 0 0 0-5-5zm0 8a3 3 0 1 1 3-3 3 3 0 0 1-3 3zm9 11v-1a7 7 0 0 0-7-7h-4a7 7 0 0 0-7 7v1h2v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1z\'/></svg>'; this.classList.add('bg-light')">
     <?= htmlspecialchars($usuario['nombre']) ?>
 </div>
