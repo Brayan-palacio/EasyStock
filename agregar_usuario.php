@@ -2,13 +2,19 @@
 ob_start();
 $tituloPagina = 'Agregar Usuario - EasyStock';
 include 'config/conexion.php';
+include 'config/funciones.php'; // Asegúrate de incluir funciones
 include_once 'includes/header.php';
 
-// Verificar permisos (ejemplo: nivel >= 50 para agregar usuarios)
-if (!isset($_SESSION['id_usuario'])) {
+// Verificar permisos de administrador
+if (!isset($_SESSION['id_usuario']) || $_SESSION['logged_in'] !== true) {
+    header("Location: login.php");
+    exit();
+}
+
+if ($_SESSION['rol_usuario'] !== 'Administrador') {
     $_SESSION['mensaje'] = [
         'tipo' => 'danger',
-        'texto' => 'Requieres nivel 50+ para esta acción'
+        'texto' => 'No tienes permisos para agregar usuarios'
     ];
     header("Location: administrar_usuarios.php");
     exit();
@@ -16,61 +22,89 @@ if (!isset($_SESSION['id_usuario'])) {
 
 // Obtener grupos y roles disponibles
 $grupos = $conexion->query("SELECT id, nombre FROM grupo WHERE estado = 'Activo' ORDER BY nombre")->fetch_all(MYSQLI_ASSOC);
-$roles = ['Administrador', 'Supervisor', 'Usuario', 'Consulta']; // Ejemplo de roles
+$roles = ['Administrador', 'Supervisor', 'Usuario', 'Consulta'];
 
 // Procesar formulario
 $errores = [];
+$datos = [
+    'nombre' => '',
+    'usuario' => '',
+    'rol_usuario' => 'Usuario',
+    'grupo_id' => '',
+    'estado' => 'Activo'
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Sanitizar inputs
-    $datos = [
-        'nombre' => trim($conexion->real_escape_string($_POST['nombre'])),
-        'usuario' => strtolower(trim($conexion->real_escape_string($_POST['usuario']))),
-        'password' => $_POST['password'],
-        'rol_usuario' => in_array($_POST['rol_usuario'], $roles) ? $_POST['rol_usuario'] : 'Usuario',
-        'grupo_id' => (int)$_POST['grupo_id'],
-        'estado' => in_array($_POST['estado'], ['Activo', 'Inactivo']) ? $_POST['estado'] : 'Activo'
-    ];
+    $datos['nombre'] = trim($_POST['nombre'] ?? '');
+    $datos['usuario'] = strtolower(trim($_POST['usuario'] ?? ''));
+    $password = $_POST['password'] ?? '';
+    $datos['rol_usuario'] = in_array($_POST['rol_usuario'] ?? '', $roles) ? $_POST['rol_usuario'] : 'Usuario';
+    $datos['grupo_id'] = (int)($_POST['grupo_id'] ?? 0);
+    $datos['estado'] = in_array($_POST['estado'] ?? '', ['Activo', 'Inactivo']) ? $_POST['estado'] : 'Activo';
 
     // Validaciones
-    if (empty($datos['nombre'])) $errores[] = "Nombre completo es requerido";
+    if (empty($datos['nombre'])) {
+        $errores[] = "Nombre completo es requerido";
+    } elseif (strlen($datos['nombre']) < 2) {
+        $errores[] = "Nombre debe tener al menos 2 caracteres";
+    }
     
     if (empty($datos['usuario'])) {
         $errores[] = "Usuario es requerido";
     } elseif (!preg_match('/^[a-z0-9_]{4,20}$/', $datos['usuario'])) {
-        $errores[] = "Usuario solo puede contener letras, números y _ (4-20 caracteres)";
-    } else {
-        $existe = $conexion->prepare("SELECT id FROM usuarios WHERE usuario = ?");
-        $existe->bind_param('s', $datos['usuario']);
-        $existe->execute();
-        if ($existe->get_result()->num_rows > 0) {
-            $errores[] = "El usuario ya existe";
-        }
+        $errores[] = "Usuario solo puede contener letras minúsculas, números y _ (4-20 caracteres)";
     }
 
-    if (strlen($datos['password']) < 6) $errores[] = "Contraseña debe tener mínimo 6 caracteres";
+    if (strlen($password) < 6) {
+        $errores[] = "Contraseña debe tener mínimo 6 caracteres";
+    }
+
+    if ($datos['grupo_id'] <= 0) {
+        $errores[] = "Debe seleccionar un grupo válido";
+    }
 
     // Procesar imagen
     $imagenNombre = null;
     if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
-        $extension = pathinfo($_FILES['imagen']['name'], PATHINFO_EXTENSION);
-        $extensionesPermitidas = ['jpg', 'jpeg', 'png', 'gif'];
+        // Validar tipo MIME real
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $_FILES['imagen']['tmp_name']);
+        finfo_close($finfo);
         
-        if (in_array(strtolower($extension), $extensionesPermitidas)) {
-            $imagenNombre = 'user_' . time() . '.' . $extension;
-            $rutaDestino = 'assets/img/usuarios/' . $imagenNombre;
+        $mimesPermitidos = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!in_array($mime, $mimesPermitidos)) {
+            $errores[] = "Tipo de archivo no permitido";
+        }
+        
+        // Validar tamaño (2MB máximo)
+        if ($_FILES['imagen']['size'] > 2 * 1024 * 1024) {
+            $errores[] = "La imagen no puede ser mayor a 2MB";
+        }
+        
+        if (empty($errores)) {
+            $extension = match($mime) {
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/gif' => 'gif',
+                default => null
+            };
             
-            if (!move_uploaded_file($_FILES['imagen']['tmp_name'], $rutaDestino)) {
-                $errores[] = "Error al subir la imagen";
-                $imagenNombre = null;
+            if ($extension) {
+                $imagenNombre = 'user_' . bin2hex(random_bytes(8)) . '.' . $extension;
+                $rutaDestino = 'assets/img/usuarios/' . $imagenNombre;
+                
+                if (!move_uploaded_file($_FILES['imagen']['tmp_name'], $rutaDestino)) {
+                    $errores[] = "Error al subir la imagen";
+                    $imagenNombre = null;
+                }
             }
-        } else {
-            $errores[] = "Formato de imagen no válido (solo JPG, PNG, GIF)";
         }
     }
 
     // Insertar si no hay errores
     if (empty($errores)) {
-        $passwordHash = password_hash($datos['password'], PASSWORD_DEFAULT);
+        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
         $query = "INSERT INTO usuarios (
                   nombre, usuario, contraseña, rol_usuario, estado, grupo_id, imagen
                   ) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -95,11 +129,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: administrar_usuarios.php");
             exit();
         } else {
+            // Verificar si es error de usuario duplicado
+            if ($conexion->errno === 1062) {
+                $errores[] = "El usuario ya existe";
+            } else {
+                $errores[] = "Error al guardar el usuario";
+            }
+            
             // Eliminar imagen si falla la inserción
             if ($imagenNombre && file_exists($rutaDestino)) {
                 unlink($rutaDestino);
             }
-            $errores[] = "Error al guardar: " . $conexion->error;
         }
     }
 }
